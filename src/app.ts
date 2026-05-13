@@ -7,11 +7,13 @@ import 'dotenv/config';
 import authRoutes from './routes/auth.routes';
 import postRoutes from './routes/post.routes';
 import forumRouter from './routes/forum.routes';
-// import socialRoutes from './routes/social.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import { errorHandler } from './middlewares/error.middleware';
+import { connectDB } from './config/db';
 
 const app: Application = express();
+
+connectDB();
 
 const allowedOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -40,7 +42,6 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1', postRoutes);
 app.use('/api/v1/forum', forumRouter);
-// app.use('/api/v1', socialRoutes);
 app.use('/api/v1', analyticsRoutes);
 
 app.use(errorHandler);
