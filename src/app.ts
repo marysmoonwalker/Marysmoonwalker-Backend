@@ -1,7 +1,8 @@
-import express, { Application, Request, Response } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import mongoose from 'mongoose';
 import 'dotenv/config';
 
 import authRoutes from './routes/auth.routes';
@@ -12,8 +13,6 @@ import { errorHandler } from './middlewares/error.middleware';
 import { connectDB } from './config/db';
 
 const app: Application = express();
-
-connectDB();
 
 const allowedOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -34,6 +33,14 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+/** Ensures DB is connected before handling any request. Reuses existing connection on warm invocations. */
+app.use(async (_req: Request, _res: Response, next: NextFunction) => {
+    if (mongoose.connection.readyState !== 1) {
+        await connectDB();
+    }
+    next();
+});
 
 app.get('/api/v1/health', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'success', message: 'Server is up and running.' });
