@@ -17,40 +17,6 @@ const notify = async (payload: {
     }
 };
 
-// /** Returns paginated top-level comments for a post, each with their direct replies attached. */
-// export const getComments = async (postId: string, page: number = 1, limit: number = 10) => {
-//     const skip = (page - 1) * limit;
-
-//     const [topLevel, total] = await Promise.all([
-//         Comment.find({ postId, parentId: null, isDeleted: false })
-//             .populate('userId', 'fullName avatar username')
-//             .sort({ createdAt: 1 })
-//             .skip(skip)
-//             .limit(limit),
-//         Comment.countDocuments({ postId, parentId: null, isDeleted: false }),
-//     ]);
-
-//     const topLevelIds = topLevel.map(c => c._id);
-
-//     const replies = await Comment.find({ parentId: { $in: topLevelIds }, isDeleted: false })
-//         .populate('userId', 'fullName avatar username')
-//         .sort({ createdAt: 1 });
-
-//     const replyMap: Record<string, typeof replies> = {};
-//     for (const reply of replies) {
-//         const key = reply.parentId!.toString();
-//         if (!replyMap[key]) replyMap[key] = [];
-//         replyMap[key].push(reply);
-//     }
-
-//     const data = topLevel.map(comment => ({
-//         ...comment.toObject(),
-//         replies: replyMap[comment._id.toString()] ?? [],
-//     }));
-
-//     return { data, total, page, totalPages: Math.ceil(total / limit) };
-// };
-
 /** Returns paginated top-level comments for a post, each with their direct replies attached. */
 export const getComments = async (postId: string, page: number = 1, limit: number = 10) => {
     const skip = (page - 1) * limit;

@@ -9,6 +9,7 @@ import {
     addReply,
     removeReply,
     likeReply,
+    listUserActivity,
 } from '../controllers/forum.controller';
 import { protect, restrictTo } from '../middlewares/auth.middleware';
 import { upload } from '../utils/multer';
@@ -17,6 +18,8 @@ const router = Router();
 
 router.get   ('/',    listThreads);
 router.post  ('/',    protect, createNewThread);
+
+router.get('/users/:userId/activity', protect, listUserActivity);
 
 router.delete('/replies/:id',       protect, removeReply);
 router.patch ('/replies/:id/like',  protect, likeReply);

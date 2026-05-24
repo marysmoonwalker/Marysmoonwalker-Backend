@@ -9,6 +9,7 @@ import {
     createReply,
     deleteReply,
     toggleReplyLike,
+    getUserActivity,
 } from '../services/forum.service';
 
 const logger = {
@@ -277,6 +278,37 @@ export const likeReply = async (req: Request, res: Response, next: NextFunction)
             res.status(status).json({ status: 'error', message: (error as Error).message });
             return;
         }
+        next(error);
+    }
+};
+
+/**
+ * GET /forum/users/:userId/activity
+ * Returns threads, replies, and likes for a given user.
+ * Auth required. Users can only view their own activity; admins can view anyone's.
+ */
+export const listUserActivity = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const targetUserId = id(req.params.userId);
+        const requesterId  = req.user!.id;
+        const isAdmin      = req.user!.role === 'admin';
+
+        if (targetUserId !== requesterId && !isAdmin) {
+            res.status(403).json({
+                status:  'error',
+                message: 'Not authorised to view this user\'s activity.',
+            });
+            return;
+        }
+
+        const activity = await getUserActivity(targetUserId);
+
+        res.status(200).json({
+            status: 'success',
+            data:   { activity },
+        });
+    } catch (error) {
+        logger.error('listUserActivity', error);
         next(error);
     }
 };

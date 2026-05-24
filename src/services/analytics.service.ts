@@ -4,6 +4,34 @@ import { User } from '../models/User.model';
 import { ForumThread, ForumReply } from '../models/Forum.model';
 import { deleteFromCloudinary } from '../utils/cloudinaryUpload';
 import { AuditLog } from '../models/AuditLog.model';
+import { Visitor } from '../models/Visitor.model';
+
+interface UserListItem {
+    _id:             unknown;
+    fullName:        string;
+    username:        string;
+    email:           string;
+    avatar:          string;
+    avatarPublicId?: string | null;
+    role:            'user' | 'admin';
+    bio?:            string;
+    isVerified:      boolean;
+    country?:        string;
+    city?:           string;
+    createdAt:       Date;
+    updatedAt:       Date;
+}
+
+interface UserListResult {
+    users:      UserListItem[];
+    pagination: {
+        total:      number;
+        page:       number;
+        limit:      number;
+        totalPages: number;
+        hasMore:    boolean;
+    };
+}
 
 /**
  * Centralised timestamp logger so every error/info line shows when it happened.
@@ -275,79 +303,6 @@ export const getForumStats = async (period: Period = 'daily') => {
 };
 
 /**
- * Returns a paginated list of all registered users with their full details and
- * registration date. Supports search by full name, username, or email and
- * filtering by role (user | admin) and verification status.
- */
-interface UserListItem {
-    _id:             unknown;
-    fullName:        string;
-    username:        string;
-    email:           string;
-    avatar:          string;
-    avatarPublicId?: string | null;
-    role:            'user' | 'admin';
-    bio?:            string;
-    isVerified:      boolean;
-    createdAt:       Date;
-    updatedAt:       Date;
-}
-
-interface UserListResult {
-    users:      UserListItem[];
-    pagination: {
-        total:      number;
-        page:       number;
-        limit:      number;
-        totalPages: number;
-        hasMore:    boolean;
-    };
-}
-
-export const getAllUsers = async (
-    page:        number   = 1,
-    limit:       number   = 20,
-    search?:     string,
-    role?:       'user' | 'admin',
-    isVerified?: boolean,
-): Promise<UserListResult> => {
-    const query: Record<string, unknown> = {};
-
-    if (search?.trim()) {
-        const regex = new RegExp(search.trim(), 'i');
-        query.$or = [{ fullName: regex }, { email: regex }, { username: regex }];
-    }
-
-    if (role)                     query.role       = role;
-    if (isVerified !== undefined) query.isVerified = isVerified;
-
-    const skip = (page - 1) * limit;
-
-    const [users, total] = await Promise.all([
-        User.find(query)
-            .select('-password -refreshToken -otpCode -otpExpires -passwordResetOtp -passwordResetExpires')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean() as unknown as UserListItem[],
-        User.countDocuments(query),
-    ]);
-
-    logger.info('getAllUsers', `Fetched ${users.length} of ${total} users | page: ${page}`);
-
-    return {
-        users,
-        pagination: {
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
-            hasMore:    page * limit < total,
-        },
-    };
-};
-
-/**
  * Permanently deletes a user account by ID and removes their Cloudinary avatar.
  * Only callable by an admin. The deletion is logged to the audit trail.
  */
@@ -394,4 +349,161 @@ export const adminUpdateUserRole = async (
     logger.info('adminUpdateUserRole', `User ${targetUserId} role changed from ${previousRole} to ${newRole} by admin ID: ${adminId}`);
 
     return user;
+};
+
+/**
+ * Returns total visitor hits and unique IPs bucketed by the requested period.
+ * Used for the traffic over time chart on the analytics dashboard.
+ */
+export const getVisitorStats = async (period: Period = 'daily') => {
+    const sinceStr = resolvePeriodStart(period).toISOString().slice(0, 10);
+
+    const groupId =
+        period === 'yearly'  ? { $substr: ['$date', 0, 4] } :
+        period === 'monthly' ? { $substr: ['$date', 0, 7] } :
+                               '$date';
+
+    const [buckets, totalAllTime] = await Promise.all([
+        Visitor.aggregate([
+            { $match: { date: { $gte: sinceStr } } },
+            {
+                $group: {
+                    _id:       groupId,
+                    hits:      { $sum: '$hits' },
+                    uniqueIps: { $push: '$uniqueIps' },
+                },
+            },
+            {
+                $project: {
+                    _id:    0,
+                    date:   '$_id',
+                    hits:   1,
+                    unique: {
+                        $size: {
+                            $reduce: {
+                                input:        '$uniqueIps',
+                                initialValue: [],
+                                in:           { $setUnion: ['$$value', '$$this'] },
+                            },
+                        },
+                    },
+                },
+            },
+            { $sort: { date: 1 } },
+        ]),
+        Visitor.aggregate([
+            { $group: { _id: null, total: { $sum: '$hits' } } },
+        ]),
+    ]);
+
+    logger.info('getVisitorStats', `Visitor stats fetched | period: ${period}`);
+
+    return { period, totalAllTime: totalAllTime[0]?.total ?? 0, data: buckets };
+};
+
+/**
+ * Returns visitor counts grouped by country for the requested period.
+ * Each entry includes country name, total hits, and unique IP count.
+ * Sorted by total hits descending.
+ */
+export const getVisitorsByCountry = async (period: Period = 'monthly') => {
+    const sinceStr = resolvePeriodStart(period).toISOString().slice(0, 10);
+
+    const data = await Visitor.aggregate([
+        { $match: { date: { $gte: sinceStr } } },
+        {
+            $group: {
+                _id:       '$country',
+                hits:      { $sum: '$hits' },
+                uniqueIps: { $push: '$uniqueIps' },
+            },
+        },
+        {
+            $project: {
+                _id:     0,
+                country: '$_id',
+                hits:    1,
+                unique:  {
+                    $size: {
+                        $reduce: {
+                            input:        '$uniqueIps',
+                            initialValue: [],
+                            in:           { $setUnion: ['$$value', '$$this'] },
+                        },
+                    },
+                },
+            },
+        },
+        { $sort: { hits: -1 } },
+    ]);
+
+    logger.info('getVisitorsByCountry', `Visitor country breakdown fetched | period: ${period} | countries: ${data.length}`);
+
+    return { period, data };
+};
+
+/**
+ * Returns registered user counts grouped by country.
+ * Each entry includes country name and total registered users from that country.
+ * Sorted by count descending.
+ */
+export const getUsersByCountry = async () => {
+    const data = await User.aggregate([
+        { $match:   { country: { $exists: true, $ne: 'Unknown' } } },
+        { $group:   { _id: '$country', count: { $sum: 1 } } },
+        { $project: { _id: 0, country: '$_id', count: 1 } },
+        { $sort:    { count: -1 } },
+    ]);
+
+    logger.info('getUsersByCountry', `User country breakdown fetched | countries: ${data.length}`);
+
+    return { data };
+};
+
+/**
+ * Returns a paginated list of all registered users with their full details,
+ * registration date, and location. Supports search by full name, username,
+ * or email and filtering by role (user | admin) and verification status.
+ */
+export const getAllUsers = async (
+    page:        number   = 1,
+    limit:       number   = 20,
+    search?:     string,
+    role?:       'user' | 'admin',
+    isVerified?: boolean,
+): Promise<UserListResult> => {
+    const query: Record<string, unknown> = {};
+
+    if (search?.trim()) {
+        const regex = new RegExp(search.trim(), 'i');
+        query.$or = [{ fullName: regex }, { email: regex }, { username: regex }];
+    }
+
+    if (role)                     query.role       = role;
+    if (isVerified !== undefined) query.isVerified = isVerified;
+
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await Promise.all([
+        User.find(query)
+            .select('-password -refreshToken -otpCode -otpExpires -passwordResetOtp -passwordResetExpires -registrationIp')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean() as unknown as UserListItem[],
+        User.countDocuments(query),
+    ]);
+
+    logger.info('getAllUsers', `Fetched ${users.length} of ${total} users | page: ${page}`);
+
+    return {
+        users,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            hasMore:    page * limit < total,
+        },
+    };
 };

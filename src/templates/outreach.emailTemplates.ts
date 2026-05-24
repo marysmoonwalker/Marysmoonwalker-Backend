@@ -1,20 +1,20 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   Email Templates — Mary's Moonwalker
+   Newsletter / Contact Templates — Mary's Moonwalker
    Table-based HTML for maximum email client compatibility
    (Gmail, Outlook, Apple Mail, iOS, Android)
    Design: #0A0A0A black · #FF8C00 orange · Georgia serif · Courier mono
 ───────────────────────────────────────────────────────────────────────── */
 
 const ACCENT  = '#FF8C00';
-const ACCENT2 = '#cc7000';   /* darker orange for gradient end */
-const BG      = '#0a0a0a';
+const ACCENT2 = '#cc7000';
 const CARD    = '#111111';
 const BORDER  = '#222222';
-const SUBTLE  = '#1a1a1a';
 const TEXT    = '#d4d4d4';
 const MUTED   = '#666666';
 const MONO    = "'Courier New', Courier, monospace";
 const SERIF   = "Georgia, 'Times New Roman', serif";
+
+const UNSUBSCRIBE_BASE = process.env.API_BASE_URL ?? 'https://api.marys-moonwalker.com';
 
 /* ─── Base shell ─────────────────────────────────────────────────────────── */
 const baseTemplate = (content: string): string => `
@@ -33,29 +33,24 @@ const baseTemplate = (content: string): string => `
   </noscript>
   <![endif]-->
   <style>
-    /* Reset */
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
     img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
     body { margin: 0 !important; padding: 0 !important; background-color: #000000; }
 
-    /* Mobile */
     @media only screen and (max-width: 600px) {
-      .email-wrapper  { width: 100% !important; }
-      .email-card     { width: 100% !important; border-radius: 0 !important; border-left: none !important; border-right: none !important; }
-      .header-cell    { padding: 24px 20px !important; }
-      .body-cell      { padding: 28px 20px !important; }
-      .footer-cell    { padding: 20px !important; }
-      .otp-text       { font-size: 36px !important; letter-spacing: 8px !important; }
-      .btn-link       { padding: 14px 24px !important; font-size: 13px !important; }
-      .h1-text        { font-size: 22px !important; }
-      .h2-text        { font-size: 18px !important; }
+      .email-card   { width: 100% !important; border-radius: 0 !important; border-left: none !important; border-right: none !important; }
+      .header-cell  { padding: 24px 20px !important; }
+      .body-cell    { padding: 28px 20px !important; }
+      .footer-cell  { padding: 20px !important; }
+      .btn-link     { padding: 14px 24px !important; font-size: 12px !important; }
+      .h1-text      { font-size: 22px !important; letter-spacing: 2px !important; }
+      .h2-text      { font-size: 18px !important; }
     }
   </style>
 </head>
 <body style="margin:0;padding:0;background-color:#000000;">
 
-  <!-- Outer wrapper -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
          style="background-color:#000000;min-height:100vh;">
     <tr>
@@ -72,7 +67,7 @@ const baseTemplate = (content: string): string => `
                  overflow:hidden;
                ">
 
-          <!-- ── HEADER ─────────────────────────────────────────────── -->
+          <!-- HEADER -->
           <tr>
             <td class="header-cell" align="center"
                 style="
@@ -80,7 +75,6 @@ const baseTemplate = (content: string): string => `
                   border-bottom:2px solid ${ACCENT};
                   padding:36px 40px;
                 ">
-              <!-- Orange top rule -->
               <table role="presentation" width="40" cellpadding="0" cellspacing="0" border="0"
                      style="margin:0 auto 20px auto;">
                 <tr>
@@ -110,14 +104,14 @@ const baseTemplate = (content: string): string => `
             </td>
           </tr>
 
-          <!-- ── BODY ───────────────────────────────────────────────── -->
+          <!-- BODY -->
           <tr>
             <td class="body-cell" style="padding:40px;">
               ${content}
             </td>
           </tr>
 
-          <!-- ── FOOTER ─────────────────────────────────────────────── -->
+          <!-- FOOTER -->
           <tr>
             <td class="footer-cell" align="center"
                 style="
@@ -149,7 +143,7 @@ const baseTemplate = (content: string): string => `
                 font-size:10px;
                 margin:14px 0 0 0;
                 letter-spacing:1px;
-              ">You received this email because you have an account with us.</p>
+              ">You received this email because you subscribed on our website.</p>
             </td>
           </tr>
 
@@ -190,61 +184,7 @@ const paragraph = (text: string): string => `
   ">${text}</p>
 `;
 
-const otpBox = (otp: string): string => `
-  <!-- OTP box -->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
-         style="margin:28px 0;">
-    <tr>
-      <td align="center"
-          style="
-            background-color:#0d0d0d;
-            border:1px solid ${ACCENT};
-            border-radius:10px;
-            padding:32px 20px;
-          ">
-
-        <p style="
-          color:${MUTED};
-          font-family:${MONO};
-          font-size:10px;
-          letter-spacing:4px;
-          text-transform:uppercase;
-          margin:0 0 16px 0;
-        ">Your One-Time Password</p>
-
-        <p class="otp-text" style="
-          color:${ACCENT};
-          font-family:${MONO};
-          font-size:44px;
-          font-weight:bold;
-          letter-spacing:14px;
-          margin:0 0 16px 0;
-          line-height:1;
-        ">${otp}</p>
-
-        <!-- Thin orange divider -->
-        <table role="presentation" width="60" cellpadding="0" cellspacing="0" border="0"
-               style="margin:0 auto 16px auto;">
-          <tr>
-            <td height="1" style="background-color:${ACCENT};opacity:0.3;font-size:0;line-height:0;">&nbsp;</td>
-          </tr>
-        </table>
-
-        <p style="
-          color:${MUTED};
-          font-family:${MONO};
-          font-size:11px;
-          letter-spacing:1px;
-          margin:0;
-        ">Expires in <span style="color:${ACCENT};font-weight:bold;">10 minutes</span></p>
-
-      </td>
-    </tr>
-  </table>
-`;
-
 const ctaButton = (label: string, href: string): string => `
-  <!-- CTA button -->
   <table role="presentation" cellpadding="0" cellspacing="0" border="0"
          style="margin:32px auto;">
     <tr>
@@ -274,7 +214,6 @@ const ctaButton = (label: string, href: string): string => `
 `;
 
 const infoBox = (text: string): string => `
-  <!-- Info / warning box -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
          style="margin:20px 0;">
     <tr>
@@ -298,7 +237,6 @@ const infoBox = (text: string): string => `
 `;
 
 const signature = (): string => `
-  <!-- Signature -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
          style="margin:32px 0 0 0;border-top:1px solid ${BORDER};">
     <tr>
@@ -315,7 +253,6 @@ const signature = (): string => `
           color:${ACCENT};
           font-family:${MONO};
           font-size:12px;
-          font-style:normal;
           font-weight:bold;
           letter-spacing:2px;
           text-transform:uppercase;
@@ -326,57 +263,71 @@ const signature = (): string => `
   </table>
 `;
 
+const unsubscribeBlock = (url: string): string => `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+         style="margin-top:32px;border-top:1px solid #1a1a1a;">
+    <tr>
+      <td align="center" style="padding-top:20px;">
+        <p style="
+          color:#3a3a3a;
+          font-family:${MONO};
+          font-size:10px;
+          letter-spacing:1px;
+          margin:0 0 8px 0;
+        ">No longer wish to receive our updates?</p>
+        <a href="${url}"
+           style="
+             color:#444444;
+             font-family:${MONO};
+             font-size:10px;
+             letter-spacing:2px;
+             text-transform:uppercase;
+             text-decoration:underline;
+           ">Unsubscribe</a>
+      </td>
+    </tr>
+  </table>
+`;
+
 /* ─── Templates ──────────────────────────────────────────────────────────── */
 
-/** Welcome email — sent after successful email verification */
-export const welcomeEmailTemplate = (name: string): string => {
+/**
+ * Sent to a new subscriber immediately after sign-up.
+ * Includes an unsubscribe link backed by the subscriber's unique token.
+ */
+export const subscribeConfirmTemplate = (unsubscribeToken: string): string => {
+    const unsubscribeUrl = `${UNSUBSCRIBE_BASE}/api/unsubscribe/${unsubscribeToken}`;
+
     return baseTemplate(`
-        ${heading(`Welcome to the Family, ${name} `)}
+        ${heading("You're In. Welcome to the Inner Circle.")}
 
-        ${paragraph(`Your account has been verified. We are beyond thrilled to have you join our community of dedicated fans celebrating the legacy of the King of Pop.`)}
+        ${paragraph("You are now part of a community dedicated to preserving the legacy of the greatest entertainer who ever lived. Expect exclusive archival deep-dives, rare media drops, and stories that never made the headlines.")}
 
-        ${paragraph(`Explore exclusive blog posts, dive deep into iconic moments, and connect with fellow Moonwalkers from around the world.`)}
+        ${paragraph("We only write when it matters — keep an eye on your inbox.")}
 
-        ${ctaButton('Start Exploring', 'https://marys-moonwalker.com')}
+        ${ctaButton('Explore the Archive', 'https://marys-moonwalker.com')}
 
-        ${infoBox('TIP &nbsp;·&nbsp; Bookmark marys-moonwalker.com so you never miss a new post or release.')}
+        ${infoBox('TIP &nbsp;·&nbsp; Add hello@marys-moonwalker.com to your contacts so our emails never land in spam.')}
 
         ${signature()}
+
+        ${unsubscribeBlock(unsubscribeUrl)}
     `);
 };
 
-/** OTP email — sent during registration for email verification */
-export const otpEmailTemplate = (name: string, otp: string): string => {
-    return baseTemplate(`
-        ${heading(`Verify Your Email, ${name}`)}
+/**
+ * Auto-reply sent to anyone who submits the contact form.
+ * Confirms receipt and sets expectations on response time.
+ */
+export const contactAcknowledgementTemplate = (name: string): string =>
+    baseTemplate(`
+        ${heading(`We Received Your Message, ${name}.`)}
 
-        ${paragraph(`Thank you for joining Mary's Moonwalker. To complete your registration, use the one-time password below to verify your email address.`)}
+        ${paragraph("Thank you for reaching out to Mary's Moonwalker. Your message has been received and a member of our team will review it shortly.")}
 
-        ${otpBox(otp)}
+        ${paragraph(`We typically respond within <span style="color:${ACCENT};font-weight:bold;">2–3 business days</span>. If your inquiry is urgent, you can also reach us directly at <a href="mailto:hello@marys-moonwalker.com" style="color:${ACCENT};text-decoration:none;">hello@marys-moonwalker.com</a>.`)}
 
-        ${infoBox('For your security, never share this OTP with anyone. Our team will never ask for it.')}
-
-        ${paragraph(`If you did not create an account with us, you can safely ignore this email.`)}
-
-        ${signature()}
-    `);
-};
-
-/** OTP email — sent when a user requests a password reset */
-export const passwordResetOtpTemplate = (name: string, otp: string): string => {
-    return baseTemplate(`
-        ${heading(`Password Reset Request`)}
-
-        ${paragraph(`Hi ${name}, we received a request to reset the password for your Mary's Moonwalker account.`)}
-
-        ${paragraph(`Use the one-time password below to proceed. This OTP is valid for 10 minutes.`)}
-
-        ${otpBox(otp)}
-
-        ${infoBox('If you did not request a password reset, ignore this email — your account remains secure. No action is needed.')}
-
-        ${paragraph(`For your security, never share this OTP with anyone.`)}
+        ${infoBox('Please do not reply to this email — it is sent from an unmonitored address. Use the contact form or email us directly.')}
 
         ${signature()}
     `);
-};

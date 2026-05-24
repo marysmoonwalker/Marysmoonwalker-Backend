@@ -7,6 +7,7 @@ import { BlacklistedToken } from '../models/BlacklistedToken.model';
 import { generateAccessToken, generateRefreshToken } from '../utils/generateToken';
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinaryUpload';
 import { sendEmail } from '../utils/sendEmail';
+import { resolveLocation } from '../utils/resolveLocation';
 import { welcomeEmailTemplate, otpEmailTemplate, passwordResetOtpTemplate } from '../templates/auth.templates';
 
 /**
@@ -84,30 +85,34 @@ const generateDefaultAvatar = (username: string): string => {
 };
 
 /** Registers a new user, auto-generates their username and default avatar, and sends a 6-digit OTP to their email for verification. */
-export const registerUser = async (userData: Partial<IUser>, file?: Express.Multer.File) => {
+export const registerUser = async (userData: Partial<IUser>, file?: Express.Multer.File, ip?: string) => {
     const existingUser = await User.findOne({ email: userData.email });
     if (existingUser) throw new Error('Email already in use');
- 
+
     validatePasswordStrength(userData.password!);
- 
-    const username  = await generateUsername(userData.fullName!);
-    const avatarUrl = file ? await uploadToCloudinary(file.buffer) : generateDefaultAvatar(username);
- 
+
+    const username          = await generateUsername(userData.fullName!);
+    const avatarUrl         = file ? await uploadToCloudinary(file.buffer) : generateDefaultAvatar(username);
+    const { country, city } = resolveLocation(ip ?? '');
+
     const hashedPassword = await bcrypt.hash(userData.password!, 12);
     const otp            = generateOtp();
     const hashedOtp      = hashOtp(otp);
- 
+
     const newUser = await User.create({
         ...userData,
         username,
-        password:   hashedPassword,
-        avatar:     avatarUrl,
-        otpCode:    hashedOtp,
-        otpExpires: new Date(Date.now() + 10 * 60 * 1000),
+        password:        hashedPassword,
+        avatar:          avatarUrl,
+        country,
+        city,
+        registrationIp:  ip ?? null,
+        otpCode:         hashedOtp,
+        otpExpires:      new Date(Date.now() + 10 * 60 * 1000),
     });
- 
-    logger.info('registerUser', `New user registered: ${newUser.email} | username: ${newUser.username}`);
- 
+
+    logger.info('registerUser', `New user registered: ${newUser.email} | username: ${newUser.username} | country: ${country}`);
+
     try {
         await sendEmail({
             email:   newUser.email,
@@ -118,7 +123,7 @@ export const registerUser = async (userData: Partial<IUser>, file?: Express.Mult
     } catch (emailError) {
         logger.error('registerUser:sendEmail', emailError);
     }
- 
+
     return newUser;
 };
 

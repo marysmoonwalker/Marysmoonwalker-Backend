@@ -16,6 +16,10 @@ export interface IUser extends Document {
     otpExpires?: Date;
     passwordResetOtp?: string;
     passwordResetExpires?: Date;
+
+    country?: string;
+    city?: string;
+    registrationIp?: string;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -33,6 +37,10 @@ const UserSchema = new Schema<IUser>({
     otpExpires:           { type: Date, select: false },
     passwordResetOtp:     { type: String, select: false },
     passwordResetExpires: { type: Date, select: false },
+
+    country:         { type: String, default: 'Unknown' },
+    city:            { type: String, default: 'Unknown' },
+    registrationIp:  { type: String, default: null, select: false },
 }, { timestamps: true });
 
 export const User = model<IUser>('User', UserSchema);

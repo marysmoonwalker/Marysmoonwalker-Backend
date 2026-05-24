@@ -9,6 +9,9 @@ import {
     getAllUsers,
     adminDeleteUser,
     adminUpdateUserRole,
+    getVisitorStats,
+    getVisitorsByCountry,
+    getUsersByCountry,
 } from '../services/analytics.service';
 
 /**
@@ -171,6 +174,52 @@ export const updateUserRole = async (req: Request, res: Response, next: NextFunc
         res.status(200).json({ status: 'success', data: updatedUser });
     } catch (error) {
         logger.error('updateUserRole', error);
+        next(error);
+    }
+};
+
+/**
+ * Returns total hits and unique visitor counts bucketed by the requested period.
+ * Accepts an optional query param: period = daily | weekly | monthly | yearly.
+ * Defaults to daily if not provided.
+ */
+export const fetchVisitorStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const period = (Array.isArray(req.query.period) ? req.query.period[0] : req.query.period) as 'daily' | 'weekly' | 'monthly' | 'yearly' || 'daily';
+        const data   = await getVisitorStats(period);
+        res.status(200).json({ status: 'success', data });
+    } catch (error) {
+        logger.error('fetchVisitorStats', error);
+        next(error);
+    }
+};
+
+/**
+ * Returns visitor counts grouped by country for the requested period.
+ * Accepts an optional query param: period = daily | weekly | monthly | yearly.
+ * Defaults to monthly if not provided.
+ */
+export const fetchVisitorsByCountry = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const period = (Array.isArray(req.query.period) ? req.query.period[0] : req.query.period) as 'daily' | 'weekly' | 'monthly' | 'yearly' || 'monthly';
+        const data   = await getVisitorsByCountry(period);
+        res.status(200).json({ status: 'success', data });
+    } catch (error) {
+        logger.error('fetchVisitorsByCountry', error);
+        next(error);
+    }
+};
+
+/**
+ * Returns registered user counts grouped by country.
+ * No period filter — returns all-time totals per country.
+ */
+export const fetchUsersByCountry = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const data = await getUsersByCountry();
+        res.status(200).json({ status: 'success', data });
+    } catch (error) {
+        logger.error('fetchUsersByCountry', error);
         next(error);
     }
 };

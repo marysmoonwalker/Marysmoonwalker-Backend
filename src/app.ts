@@ -5,10 +5,12 @@ import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import 'dotenv/config';
 
+import { trackVisitor } from './middlewares/trackVisitor.middleware';
 import authRoutes from './routes/auth.routes';
 import postRoutes from './routes/post.routes';
 import forumRouter from './routes/forum.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import outreachRoutes from './routes/outreach.routes';
 import { errorHandler } from './middlewares/error.middleware';
 import { connectDB } from './config/db';
 
@@ -46,11 +48,12 @@ app.get('/api/v1/health', (_req: Request, res: Response) => {
     res.status(200).json({ status: 'success', message: 'Server is up and running.' });
 });
 
+app.use(trackVisitor);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1', postRoutes);
 app.use('/api/v1/forum', forumRouter);
+app.use('/api/v1/outreach', outreachRoutes)
 app.use('/api/v1', analyticsRoutes);
-
 app.use(errorHandler);
 
 export default app;

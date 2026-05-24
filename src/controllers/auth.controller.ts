@@ -31,14 +31,18 @@ const logger = {
 /** Handles new user registration and sends a verification OTP to their email. */
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const user = await registerUser(req.body, req.file);
+        const forwarded = req.headers['x-forwarded-for'];
+        const ip        = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0].trim()) ?? req.ip ?? '';
+
+        const user = await registerUser(req.body, req.file, ip);
+
         res.status(201).json({
             status: 'success',
             message: 'Registration successful. Please check your email for your verification OTP.',
             data: {
-                id: user._id,
+                id:       user._id,
                 fullName: user.fullName,
-                email: user.email,
+                email:    user.email,
             },
         });
     } catch (error) {

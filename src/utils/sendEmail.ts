@@ -1,38 +1,3 @@
-// import nodemailer from 'nodemailer';
-// import 'dotenv/config';
-
-// export const sendEmail = async (options: { email: string; subject: string; html: string }): Promise<void> => {
-//     const transporter = nodemailer.createTransport({
-//         host: process.env.EMAIL_HOST,
-//         port: parseInt(process.env.EMAIL_PORT || '587'),
-//         auth: {
-//             user: process.env.EMAIL_USER,
-//             pass: process.env.EMAIL_PASS,
-//         },
-//     });
-
-//     await transporter.sendMail({
-//         from: `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_FROM_ADDRESS}>`,
-//         to: options.email,
-//         subject: options.subject,
-//         html: options.html,
-//     });
-// };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import nodemailer from 'nodemailer';
 import 'dotenv/config';
 

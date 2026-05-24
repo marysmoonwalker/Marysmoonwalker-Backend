@@ -9,6 +9,9 @@ import {
     fetchAllUsers,
     deleteUser,
     updateUserRole,
+    fetchVisitorStats,
+    fetchVisitorsByCountry,
+    fetchUsersByCountry,
 } from '../controllers/analytics.controller';
 import { protect, restrictTo } from '../middlewares/auth.middleware';
 
@@ -26,5 +29,9 @@ router.get('/analytics/forum',            fetchForumStats);
 router.get('/users',                      fetchAllUsers);
 router.delete('/users/:id',               deleteUser);
 router.patch('/users/:id/role',           updateUserRole);
+
+router.get('/analytics/visitors/stats',     fetchVisitorStats);
+router.get('/analytics/visitors/countries', fetchVisitorsByCountry);
+router.get('/analytics/users/countries',    fetchUsersByCountry);
 
 export default router;
