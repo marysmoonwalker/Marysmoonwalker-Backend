@@ -44,7 +44,7 @@ export const subscribe = async (email: string): Promise<ISubscriber> => {
     try {
         await sendEmail({
             email,
-            subject: 'Welcome to Mary\'s Moonwalker 🎤',
+            subject: 'Welcome to Mary\'s Moonwalker',
             html:    subscribeConfirmTemplate(subscriber.unsubscribeToken),
         });
     } catch (emailError) {
