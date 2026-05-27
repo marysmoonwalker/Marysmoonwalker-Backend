@@ -5,7 +5,7 @@ import { User, IUser } from '../models/User.model';
 import { AuditLog } from '../models/AuditLog.model';
 import { BlacklistedToken } from '../models/BlacklistedToken.model';
 import { generateAccessToken, generateRefreshToken } from '../utils/generateToken';
-import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinaryUpload';
+import { uploadToCloudinary, deleteFromCloudinary, extractPublicId } from '../utils/cloudinaryUpload';
 import { sendEmail } from '../utils/sendEmail';
 import { resolveLocation } from '../utils/resolveLocation';
 import { welcomeEmailTemplate, otpEmailTemplate, passwordResetOtpTemplate } from '../templates/auth.templates';
@@ -357,12 +357,16 @@ export const updateUserProfile = async (userId: string, updateData: Partial<IUse
     if (!user) throw new Error('User not found');
 
     if (file) {
-        if (user.avatarPublicId) await deleteFromCloudinary(user.avatarPublicId);
+        if (user.avatar && user.avatar.includes('cloudinary.com')) {
+            const oldPublicId = extractPublicId(user.avatar);
+            if (oldPublicId) await deleteFromCloudinary(oldPublicId);
+        }
+
         updateData.avatar = await uploadToCloudinary(file.buffer);
     }
 
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
-        new: true,
+        new:           true,
         runValidators: true,
     });
 

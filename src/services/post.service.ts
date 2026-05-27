@@ -1,6 +1,7 @@
 import { Category, ICategory, Post, IPost, PostView } from '../models/Post.model';
 import { AuditLog } from '../models/AuditLog.model';
 import { Types } from 'mongoose';
+import { deleteFromCloudinary, extractPublicId } from '../utils/cloudinaryUpload';
 
 const logger = {
     info: (context: string, message: string) => {
@@ -252,6 +253,35 @@ export const updatePost = async (adminId: string, id: string, data: Partial<IPos
     const post = await Post.findById(id);
     if (!post) throw new Error('Post not found');
 
+    if (data.thumbnail && data.thumbnail !== post.thumbnail && post.thumbnail) {
+        const oldThumbnailId = extractPublicId(post.thumbnail);
+        if (oldThumbnailId) await deleteFromCloudinary(oldThumbnailId);
+    }
+
+    if (data.mediaUrl && data.mediaUrl !== post.mediaUrl && post.mediaUrl && post.mediaUrl.includes('cloudinary.com')) {
+        const oldMediaId = extractPublicId(post.mediaUrl);
+        if (oldMediaId) await deleteFromCloudinary(oldMediaId);
+    }
+
+    if (data.sections && data.sections.length) {
+        const incomingUrls = new Set(
+            data.sections
+                .filter(s => s.type === 'image' && s.mediaUrl)
+                .map(s => s.mediaUrl!),
+        );
+
+        const oldSectionImages = post.sections.filter(
+            s => s.type === 'image' && s.mediaUrl && s.mediaUrl.includes('cloudinary.com') && !incomingUrls.has(s.mediaUrl),
+        );
+
+        await Promise.all(
+            oldSectionImages.map(s => {
+                const publicId = extractPublicId(s.mediaUrl!);
+                return publicId ? deleteFromCloudinary(publicId) : Promise.resolve();
+            }),
+        );
+    }
+
     Object.assign(post, data);
     await post.save();
 
@@ -273,8 +303,31 @@ export const updatePost = async (adminId: string, id: string, data: Partial<IPos
 
 /** Deletes a post by ID. Throws if the post is not found. */
 export const deletePost = async (adminId: string, id: string): Promise<IPost> => {
-    const post = await Post.findByIdAndDelete(id).lean() as unknown as IPost;
+    const post = await Post.findById(id).lean() as unknown as IPost;
     if (!post) throw new Error('Post not found');
+
+    if (post.thumbnail) {
+        const thumbnailId = extractPublicId(post.thumbnail);
+        if (thumbnailId) await deleteFromCloudinary(thumbnailId);
+    }
+
+    if (post.mediaUrl && post.mediaUrl.includes('cloudinary.com')) {
+        const mediaId = extractPublicId(post.mediaUrl);
+        if (mediaId) await deleteFromCloudinary(mediaId);
+    }
+
+    const sectionImages = post.sections.filter(
+        s => s.type === 'image' && s.mediaUrl && s.mediaUrl.includes('cloudinary.com'),
+    );
+
+    await Promise.all(
+        sectionImages.map(s => {
+            const publicId = extractPublicId(s.mediaUrl!);
+            return publicId ? deleteFromCloudinary(publicId) : Promise.resolve();
+        }),
+    );
+
+    await Post.findByIdAndDelete(id);
 
     await AuditLog.create({
         userId:   adminId,
