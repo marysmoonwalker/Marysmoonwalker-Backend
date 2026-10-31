@@ -22,17 +22,26 @@ const logger = {
     },
     error: (context: string, error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
-        const stack   = error instanceof Error ? error.stack   : undefined;
+        const stack = error instanceof Error ? error.stack : undefined;
         console.error(`[${new Date().toISOString()}] [ERROR] [${context}]: ${message}`);
         if (stack) console.error(stack);
     },
 };
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+const getRefreshTokenCookieOptions = (maxAge?: number) => ({
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
+    ...(maxAge !== undefined ? { maxAge } : {}),
+});
+
 /** Handles new user registration and sends a verification OTP to their email. */
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const forwarded = req.headers['x-forwarded-for'];
-        const ip        = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0].trim()) ?? req.ip ?? '';
+        const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0].trim()) ?? req.ip ?? '';
 
         const user = await registerUser(req.body, req.file, ip);
 
@@ -40,9 +49,9 @@ export const register = async (req: Request, res: Response, next: NextFunction):
             status: 'success',
             message: 'Registration successful. Please check your email for your verification OTP.',
             data: {
-                id:       user._id,
+                id: user._id,
                 fullName: user.fullName,
-                email:    user.email,
+                email: user.email,
             },
         });
     } catch (error) {
@@ -96,12 +105,7 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
         const { accessToken, refreshToken, user } = await loginUser(email, password, ip, ua);
 
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie('refreshToken', refreshToken, getRefreshTokenCookieOptions(30 * 24 * 60 * 60 * 1000));
 
         res.status(200).json({
             status: 'success',
@@ -161,11 +165,7 @@ export const logout = async (req: Request, res: Response, next: NextFunction): P
         const accessToken = req.headers.authorization?.split(' ')[1]!;
         await logoutUser(req.user!.id, accessToken);
 
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-        });
+        res.clearCookie('refreshToken', getRefreshTokenCookieOptions());
 
         res.status(200).json({
             status: 'success',
@@ -256,11 +256,7 @@ export const deleteAccount = async (req: Request, res: Response, next: NextFunct
     try {
         await deleteUserAccount(req.user!.id);
 
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-        });
+        res.clearCookie('refreshToken', getRefreshTokenCookieOptions());
 
         res.status(200).json({
             status: 'success',
