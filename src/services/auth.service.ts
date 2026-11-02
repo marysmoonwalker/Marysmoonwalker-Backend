@@ -354,7 +354,27 @@ export const updatePassword = async (userId: string, currentPassword: string, ne
 /** Updates the profile information of an authenticated user. */
 export const updateUserProfile = async (userId: string, updateData: Partial<IUser>, file?: Express.Multer.File) => {
     const user = await User.findById(userId);
-    if (!user) throw new Error('User not found');
+    if (!user) {
+        const err: any = new Error('User not found');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    if (updateData.username) {
+        const cleanUsername = updateData.username.trim();
+        if (cleanUsername.toLowerCase() !== user.username?.toLowerCase()) {
+            const existingUser = await User.findOne({
+                username: { $regex: new RegExp(`^${cleanUsername}$`, 'i') },
+                _id: { $ne: userId }
+            });
+            if (existingUser) {
+                const err: any = new Error('Username is already taken. Please choose another.');
+                err.statusCode = 409;
+                throw err;
+            }
+        }
+        updateData.username = cleanUsername;
+    }
 
     if (file) {
         if (user.avatar && user.avatar.includes('cloudinary.com')) {
